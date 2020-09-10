@@ -25,7 +25,13 @@ tqdm.pandas()
 
 
 def load_data(num_classes):
+    # ===================== 数据读取 ================
     book = pd.read_csv('data/book.csv', encoding='ISO-8859-1')
+    user = pd.read_csv('data/user.csv', encoding='ISO-8859-1')
+    train = pd.read_csv('data/train.csv', )
+    test = pd.read_csv('data/test.csv')
+
+    # ===================== 数据预处理 ================
     # 预处理
     # 年份处理
     book.loc[book['ISBN'] == '0330482750', 'Year-Of-Publication'] = 2002
@@ -34,19 +40,12 @@ def load_data(num_classes):
         book['Year-Of-Publication'].value_counts().index[0]
     # book.loc[book['Year-Of-Publication'] == 0, 'Year-Of-Publication'] = \
     #     book['Year-Of-Publication'].value_counts().index[0]
-
     book.loc[book['ISBN'] == '0330482750', 'Book-Author'] = 'Amit Chaudhuri'
     book.loc[book['ISBN'] == '0330482750', 'Publisher'] = 'Vintage Books USA'
     book['Publisher'].fillna(value=book.Publisher.mode().values[0], inplace=True)
 
-    user = pd.read_csv('data/user.csv', encoding='ISO-8859-1')
-
-    train = pd.read_csv('data/train.csv', )
-    test = pd.read_csv('data/test.csv')
-
     train = pd.merge(train, user, how='left', on='User-ID')
     train = pd.merge(train, book, how='left', on='ISBN')
-
     test = pd.merge(test, user, how='left', on='User-ID')
     test = pd.merge(test, book, how='left', on='ISBN')
     train_size = len(train)
@@ -59,7 +58,7 @@ def load_data(num_classes):
     low_ratings_users = train[select_index]['User-ID'].unique()
     low_ratings_books = train[select_index]['ISBN'].unique()
 
-    select_index = train['Book-Rating'] > 4
+    select_index = train['Book-Rating'] >= 7
     high_ratings_years = train[select_index]['Year-Of-Publication'].unique()
     high_ratings_authors = train[select_index]['Book-Author'].unique()
     high_ratings_publishers = train[select_index]['Publisher'].unique()
@@ -73,10 +72,6 @@ def load_data(num_classes):
 
     train['Book-Rating'] = train['Book-Rating'].astype(int)
     train['Book-Rating'] = train['Book-Rating'].apply(lambda x: label(x, num_classes))
-
-    # feature engineering........
-    # update = True
-    # if update:
     data = pd.concat([train, test], axis=0).reset_index(drop=True)
 
     data['low_ratings_year'] = data['Year-Of-Publication'].isin(low_ratings_years).astype(int)
@@ -94,6 +89,7 @@ def load_data(num_classes):
     data['unique_users'] = data['User-ID'].isin(unique_users).astype(int)
     data['unique_books'] = data['ISBN'].isin(unique_books).astype(int)
 
+    #  位置特征
     def get_locations(row):
         """
         用户 location 处理
@@ -102,37 +98,56 @@ def load_data(num_classes):
         """
         x = row['Location']
         locations = x.split(',')
-        # loc1, loc2, loc3 = '', '', ''
+        country, state, city = '', '', ''
         if len(locations) == 3:
-            loc1 = locations[2]
-            loc2 = locations[1]
-            loc3 = locations[0]
+            country = locations[2]
+            if len(country)==0: #例如： weston, ,，将国家设置成美国
+                country='usa'
+            state = locations[1]
+            if len(state)==0:
+                state=locations[0]
+            city = locations[0]
+        elif len(locations) == 4:
+            # eg：ray, michigan usa, ,
+            # eg:ivanhoe, melbourne, , australia
+            country = locations[3] #
+            if len(country)==0: #例如： weston, ,，将国家设置成美国
+                country='usa'
+            state = locations[1]
+            if len(state)==0:
+                state=locations[2]
+            city = locations[0]
         elif len(locations) == 2:
-            loc1 = locations[1]
-            loc2 = locations[0]
-            loc3 = locations[0]
+            country = locations[1]
+            state = locations[0]
+            city = locations[0]
         elif len(locations) == 1:
-            loc1 = locations[0]
-            loc2 = locations[0]
-            loc3 = locations[0]
-        else:
-            loc1, loc2, loc3 = locations[2], locations[1], locations[0]
-        return loc1, loc2, loc3
+            country = locations[0]
+            state = locations[0]
+            city = locations[0]
+        else: # 大于4
+            country = locations[-1]
+            if len(country)==0:
+                country='usa'
+            state = locations[1]
+            if len(state)==0:
+                state=locations[2]
+            city = locations[0]
+        return country, state, city
 
-    # data[['country', 'state', 'city']] = data.progress_apply(lambda x: get_locations(x), axis=1,
-    #                                                          result_type="expand")
+    data[['country', 'state', 'city']] = data.progress_apply(lambda x: get_locations(x), axis=1,
+                                                             result_type="expand")
     lb = LabelEncoder()
 
-    # data['country'] = lb.fit_transform(data['country'])
-    # data['state'] = lb.fit_transform(data['state'])
-    # data['city'] = lb.fit_transform(data['city'])
-    # del data['state'],data['city']
+    data['country'] = lb.fit_transform(data['country'])
+    data['state'] = lb.fit_transform(data['state'])
+    data['city'] = lb.fit_transform(data['city'])
 
     data['Location'] = lb.fit_transform(data['Location'])
     data['Location_count'] = data.groupby('Location')['ISBN'].transform('count')
-    # data['country_count'] = data.groupby('country')['ISBN'].transform('count')
-    # data['state_count'] = data.groupby('state')['ISBN'].transform('count')
-    # data['city_count'] = data.groupby('city')['ISBN'].transform('count')
+    data['country_count'] = data.groupby('country')['ISBN'].transform('count')
+    data['state_count'] = data.groupby('state')['ISBN'].transform('count')
+    data['city_count'] = data.groupby('city')['ISBN'].transform('count')
 
     # 出版商 Publisher特征
     data['Publisher'] = data['Publisher'].fillna(value='None')

@@ -229,7 +229,6 @@ for num_classes in nums:
     print(y.value_counts())
     X = train[features]
     X_test = test[features]
-    num_classes = 4
 
     result_dict_lgb = train_model_classification(X=X,
                                                  X_test=X_test,

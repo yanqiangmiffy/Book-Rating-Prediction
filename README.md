@@ -64,3 +64,12 @@
 1.166667       225
 5.833333        35
 ```
+
+
+
+## 特征工程
+![](others/feature_imp.png)
+```python
+# 加入 效果差
+# data['Publisher_count'] = data.groupby('Publisher')['ISBN'].transform('count')
+```

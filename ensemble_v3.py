@@ -26,34 +26,34 @@ def label_inverse(x, num_classes):
             return 7  # 6 10
 
 
-lgb3 = pd.read_csv('result/' + 'lgb_numclasses3_0.7200879974615008trainoof.csv', header=None)
+lgb3 = pd.read_csv('result/' + 'lgb_numclasses3_0.7224976566146037trainoof.csv', header=None)
 lgb3['pred'] = np.argmax(lgb3.values, axis=1)
 lgb3['pred'] = lgb3['pred'].apply(lambda x: label_inverse(x, 3))
 print("lgb3_train",mean_absolute_error(target, lgb3['pred']))
 
-lgb3_test = pd.read_csv('result/' + 'lgb_numclasses3_0.7200879974615008testoof.csv', header=None)
+lgb3_test = pd.read_csv('result/' + 'lgb_numclasses3_0.7224976566146037testoof.csv', header=None)
 lgb3_test['pred'] = np.argmax(lgb3_test.values, axis=1)
 lgb3_test['pred'] = lgb3_test['pred'].apply(lambda x: label_inverse(x, 3))
 print(lgb3_test['pred'].value_counts())
 
-cat3 = pd.read_csv('result/' + 'cat_numclasses3_0.7267057405117809trainoof.csv', header=None)
+cat3 = pd.read_csv('result/' + 'cat_numclasses3_0.7290964243513188trainoof.csv', header=None)
 cat3['pred'] = np.argmax(cat3.values, axis=1)
 cat3['pred'] = cat3['pred'].apply(lambda x: label_inverse(x, 3))
 print(cat3['pred'].value_counts())
 print("cat3_train",mean_absolute_error(target, cat3['pred']))
 
-cat3_test = pd.read_csv('result/' + 'cat_numclasses3_0.7267057405117809testoof.csv', header=None)
+cat3_test = pd.read_csv('result/' + 'cat_numclasses3_0.7290964243513188testoof.csv', header=None)
 cat3_test['pred'] = np.argmax(cat3_test.values, axis=1)
 cat3_test['pred'] = cat3_test['pred'].apply(lambda x: label_inverse(x, 3))
 print(cat3_test['pred'].value_counts())
 
-xgb3 = pd.read_csv('result/' + 'xgb_numclasses3_0.7270445576134603trainoof.csv', header=None)
+xgb3 = pd.read_csv('result/' + 'xgb_numclasses3_0.7257421538079711trainoof.csv', header=None)
 xgb3['pred'] = np.argmax(xgb3.values, axis=1)
 xgb3['pred'] = xgb3['pred'].apply(lambda x: label_inverse(x, 3))
 print(xgb3['pred'].value_counts())
 print("xgb3_train",mean_absolute_error(target, xgb3['pred']))
 
-xgb3_test = pd.read_csv('result/' + 'xgb_numclasses3_0.7270445576134603testoof.csv', header=None)
+xgb3_test = pd.read_csv('result/' + 'xgb_numclasses3_0.7257421538079711testoof.csv', header=None)
 xgb3_test['pred'] = np.argmax(xgb3_test.values, axis=1)
 xgb3_test['pred'] = xgb3_test['pred'].apply(lambda x: label_inverse(x, 3))
 print(xgb3_test['pred'].value_counts())

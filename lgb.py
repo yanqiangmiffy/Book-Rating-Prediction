@@ -164,7 +164,7 @@ def train_model_classification(X, X_test, y, params, num_classes=2,
             plt.title('LGB Features (avg over folds)')
             plt.show()
             result_dict['feature_importance'] = feature_importance
-            print(feature_importance)
+            # print(feature_importance)
     end_time = time.time()
 
     print("train_model_classification cost time:{}".format(end_time - start_time))
