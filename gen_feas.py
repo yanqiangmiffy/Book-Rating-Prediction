@@ -19,6 +19,11 @@ from nltk.corpus import stopwords
 from gensim.models import Word2Vec
 from sklearn.ensemble import RandomForestRegressor
 from utils import label, label_inverse
+from gensim.models.word2vec import Word2Vec
+from gensim.test.utils import common_texts
+from gensim.models.doc2vec import Doc2Vec, TaggedDocument
+from tqdm import tqdm
+import os
 
 stop_words = stopwords.words('english')
 tqdm.pandas()
@@ -36,10 +41,13 @@ def load_data(num_classes):
     # 年份处理
     book.loc[book['ISBN'] == '0330482750', 'Year-Of-Publication'] = 2002
     book['Year-Of-Publication'] = book['Year-Of-Publication'].astype(int)
-    book.loc[book['Year-Of-Publication'] == 2050, 'Year-Of-Publication'] = \
+    book.loc[book['Year-Of-Publication'] > 2020, 'Year-Of-Publication'] = \
         book['Year-Of-Publication'].value_counts().index[0]
-    # book.loc[book['Year-Of-Publication'] == 0, 'Year-Of-Publication'] = \
-    #     book['Year-Of-Publication'].value_counts().index[0]
+    book.loc[book['Year-Of-Publication'] == 0, 'Year-Of-Publication'] = \
+        book['Year-Of-Publication'].value_counts().index[0]
+    book['year_lag'] = 2020 - book['Year-Of-Publication']  # 数据集发表年份距今日期
+
+    # 作者处理
     book.loc[book['ISBN'] == '0330482750', 'Book-Author'] = 'Amit Chaudhuri'
     book.loc[book['ISBN'] == '0330482750', 'Publisher'] = 'Vintage Books USA'
     book['Publisher'].fillna(value=book.Publisher.mode().values[0], inplace=True)
@@ -50,7 +58,7 @@ def load_data(num_classes):
     test = pd.merge(test, book, how='left', on='ISBN')
     train_size = len(train)
 
-    # 评价低分特征
+    # =================== 评价低分特征 ==================
     select_index = (train['Book-Rating'] <= 4) & (train['Book-Rating'] != 0)
     low_ratings_years = train[select_index]['Year-Of-Publication'].unique()
     low_ratings_authors = train[select_index]['Book-Author'].unique()
@@ -89,7 +97,7 @@ def load_data(num_classes):
     data['unique_users'] = data['User-ID'].isin(unique_users).astype(int)
     data['unique_books'] = data['ISBN'].isin(unique_books).astype(int)
 
-    #  位置特征
+    #  ===================== 位置特征 ==========================
     def get_locations(row):
         """
         用户 location 处理
@@ -101,21 +109,21 @@ def load_data(num_classes):
         country, state, city = '', '', ''
         if len(locations) == 3:
             country = locations[2]
-            if len(country)==0: #例如： weston, ,，将国家设置成美国
-                country='usa'
+            if len(country) == 0:  # 例如： weston, ,，将国家设置成美国
+                country = 'usa'
             state = locations[1]
-            if len(state)==0:
-                state=locations[0]
+            if len(state) == 0:
+                state = locations[0]
             city = locations[0]
         elif len(locations) == 4:
             # eg：ray, michigan usa, ,
             # eg:ivanhoe, melbourne, , australia
-            country = locations[3] #
-            if len(country)==0: #例如： weston, ,，将国家设置成美国
-                country='usa'
+            country = locations[3]  #
+            if len(country) == 0:  # 例如： weston, ,，将国家设置成美国
+                country = 'usa'
             state = locations[1]
-            if len(state)==0:
-                state=locations[2]
+            if len(state) == 0:
+                state = locations[2]
             city = locations[0]
         elif len(locations) == 2:
             country = locations[1]
@@ -125,18 +133,23 @@ def load_data(num_classes):
             country = locations[0]
             state = locations[0]
             city = locations[0]
-        else: # 大于4
+        else:  # 大于4
             country = locations[-1]
-            if len(country)==0:
-                country='usa'
+            if len(country) == 0:
+                country = 'usa'
             state = locations[1]
-            if len(state)==0:
-                state=locations[2]
+            if len(state) == 0:
+                state = locations[2]
             city = locations[0]
         return country, state, city
 
-    data[['country', 'state', 'city']] = data.progress_apply(lambda x: get_locations(x), axis=1,
-                                                             result_type="expand")
+    if not os.path.exists('data/locations.csv'):
+        data[['country', 'state', 'city']] = data.progress_apply(lambda x: get_locations(x), axis=1,
+                                                                 result_type="expand")
+        data[['country', 'state', 'city']].to_csv('data/locations.csv', index=None)
+    else:
+        location_df = pd.read_csv('data/locations.csv').astype(str)
+        data = pd.concat([data, location_df], axis=1)
     lb = LabelEncoder()
 
     data['country'] = lb.fit_transform(data['country'])
@@ -149,7 +162,7 @@ def load_data(num_classes):
     data['state_count'] = data.groupby('state')['ISBN'].transform('count')
     data['city_count'] = data.groupby('city')['ISBN'].transform('count')
 
-    # 出版商 Publisher特征
+    # ===================== 出版商 Publisher特征 ===================
     data['Publisher'] = data['Publisher'].fillna(value='None')
     # data['Publisher_count'] = data.groupby('Publisher')['ISBN'].transform('count')
     data['Publisher'] = lb.fit_transform(data['Publisher'].astype(str))
@@ -161,7 +174,7 @@ def load_data(num_classes):
     # data['Book-Author_count'] = data.groupby('Book-Author')['ISBN'].transform('count')
     data['Book-Author'] = lb.fit_transform(data['Book-Author'])
 
-    # ISBN 特征
+    # ======================= ISBN 特征 ===========================
     # https://zhuanlan.zhihu.com/p/96141798
     # 3-16-148410-0  特定书籍的ISBN：978-3-16-148410-0
     data['ISBN'] = data['ISBN'].astype(str)
@@ -176,8 +189,13 @@ def load_data(num_classes):
             ISBN1, ISBN2, ISBN3, ISBN4 = x[0:3], x[4:7], x[7:10], x[10:12]
         return ISBN1, ISBN2, ISBN3, ISBN4
 
-    data[['ISBN1', 'ISBN2', 'ISBN3', 'ISBN4']] = data.progress_apply(lambda x: get_ISBN(x), axis=1,
-                                                                     result_type="expand")
+    if not os.path.exists('data/isbn.csv'):
+        data[['ISBN1', 'ISBN2', 'ISBN3', 'ISBN4']] = data.progress_apply(lambda x: get_ISBN(x), axis=1,
+                                                                         result_type="expand")
+        data[['ISBN1', 'ISBN2', 'ISBN3', 'ISBN4']].to_csv('data/isbn.csv', index=None)
+    else:
+        isbn_df = pd.read_csv('data/isbn.csv').astype(str)
+        data = pd.concat([data, isbn_df], axis=1)
 
     data['ISBN1'] = lb.fit_transform(data['ISBN1'])
     data['ISBN2'] = lb.fit_transform(data['ISBN2'])
@@ -191,13 +209,12 @@ def load_data(num_classes):
     data['ISBN4_count'] = data.groupby('ISBN4')['User-ID'].transform('count')
 
     # 用户特征
-    # data['User-ID_count'] = data.groupby('User-ID')['ISBN'].transform('count')
+    data['User-ID_count'] = data.groupby('User-ID')['ISBN'].transform('count')
     data['User-ID'] = lb.fit_transform(data['User-ID'])
 
     # 年龄特征
     # data['Age']=data['Age'].fillna(value=user['Age'].mean())
     print("年龄特征")
-    no_fea = ['Book-Title', 'Book-Rating']
     features = ['User-ID', 'ISBN', 'Year-Of-Publication']
     fillc = data.loc[:, 'Age']
     feature = data.loc[:, features]
@@ -213,16 +230,14 @@ def load_data(num_classes):
     # 填补缺失值
     data.loc[ytest.index, 'Age'] = ypredict
     data['Age'] = data['Age'].astype(int)
-
     print(data.loc[ytest.index, 'Age'])
+    # =================   Book-Title ===================
     # 标题Tfidf特征 Book-Title
     data['Book-Title'] = data['Book-Title'].str.lower()
     data['Book-Title_len'] = data['Book-Title'].map(len)
     data['Book-Title_word_len'] = data['Book-Title'].apply(lambda x: len(x.split()))
     data['Book-Title'] = data['Book-Title'].apply(lambda x: " ".join([w for w in x.split() if w not in stop_words]))
-
     print('文本聚类')
-    import os
 
     modelname = 'data/tfidf.pkl'
     if not os.path.exists(modelname):
@@ -256,7 +271,6 @@ def load_data(num_classes):
                      ]
     if not os.path.exists(kmname):
         print("用户聚类")
-
         kmeans = KMeans(init='k-means++', n_clusters=6, n_init=6, n_jobs=-1)
         pred_classes = kmeans.fit_predict(data[user_features])
         data['user_label'] = pred_classes
@@ -269,6 +283,46 @@ def load_data(num_classes):
             pred_classes = kmeans.predict(data[user_features])
             data['user_label'] = pred_classes
 
+    # 基于doc2vec的文本聚类
+    if not os.path.exists('models/doc2vec.vec'):
+        texts = book['Book-Title'].values.tolist()
+        texts = [text.split() for text in texts]
+        print(texts[:2])
+        documents = [TaggedDocument(doc, [i]) for i, doc in tqdm(enumerate(texts))]
+        d2v_model = Doc2Vec(documents, vector_size=200, window=3, min_count=1, workers=10)
+        d2v_model.save("models/doc2vec.vec")
+        d2v_model = Doc2Vec.load("models/doc2vec.vec")  # you can continue training with the loaded model!
+        print(d2v_model.infer_vector(['Classical Mythology']))
+    else:
+        d2v_model = Doc2Vec.load('models/doc2vec.vec')
+    if not os.path.exists('data/doc2vec.pkl'):
+        print("正在加载文档向量")
+        texts = data['Book-Title'].values.tolist()
+        vecs = []
+        for text in tqdm(texts):
+            vec = d2v_model.infer_vector(text.split())
+            vecs.append(vec)
+        print(np.array(vecs).shape)
+        with open('data/doc2vec.pkl', 'wb') as f:
+            pickle.dump(vecs, f)
+    else:
+        with open('data/doc2vec.pkl', 'rb') as f:
+            vecs = pickle.load(f)
+
+    kmname = 'data/km3.pkl'
+    if not os.path.exists(kmname):
+        print("基于doc2vec的标题聚类")
+        kmeans = KMeans(init='k-means++', n_clusters=15, n_init=15, n_jobs=-1)
+        pred_classes = kmeans.fit_predict(np.array(vecs))
+        data['dov2vec_label'] = pred_classes
+        print(data['dov2vec_label'].value_counts())
+        with open(kmname, 'wb') as f:
+            pickle.dump(kmeans, f)
+    else:
+        with open(kmname, 'rb') as f:
+            kmeans = pickle.load(f)
+            pred_classes = kmeans.predict(np.array(vecs))
+            data['dov2vec_label'] = pred_classes
     # 添加转化率特征
     cat_list = ['ISBN', 'User-ID', 'Book-Author', 'Publisher', 'Year-Of-Publication']
     data['ID'] = data.index
@@ -293,7 +347,7 @@ def load_data(num_classes):
     # else:
     #     data = pd.read_csv('data/df.csv')
     #     print(data.isnull().sum())
-
+    data.head(100).to_csv('data/df.csv', index=None)
     no_fea = ['Book-Title', 'id',
               'Book-Rating', 'ID', 'fold',
               'Book-Title', 'Book-Author', 'Publisher', 'Location',
