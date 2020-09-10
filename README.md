@@ -65,7 +65,11 @@
 5.833333        35
 ```
 
-
+以下为线上效果：
+- lgb num_class=3: 76.333
+- lgb num_class=4: 75.456
+- lgb num_class=5: 74.9737
+- lgb num_class=11:73.7819
 
 ## 特征工程
 ![](others/feature_imp.png)
