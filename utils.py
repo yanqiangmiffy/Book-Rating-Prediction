@@ -52,6 +52,11 @@ def label(x, num_classes):
             return 3
         else:
             return 4
+    elif num_classes == 7:
+        if x<=4:
+            return 0
+        else:
+            return x-4
     elif num_classes == 11:
         return x
 
@@ -84,5 +89,10 @@ def label_inverse(x, num_classes):
             return 7.5
         else:  # 9  10
             return 9.5
+    elif num_classes==7:
+        if x==0:
+            return 2
+        else:
+            return x+4
     elif num_classes == 11:
         return x
