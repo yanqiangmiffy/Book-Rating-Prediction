@@ -21,7 +21,7 @@ from sklearn.metrics import *
 oof_stack = np.zeros(train.shape[0])
 predictions = np.zeros(test.shape[0])
 
-no_numclass=[4,5,11]
+no_numclass=[5,11]
 cnt=0
 for file in tqdm(os.listdir('result')):
     if 'train' in file:

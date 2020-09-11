@@ -30,14 +30,15 @@ target = train['Book-Rating']
 # 将lgb和xgb的结果进行stacking
 
 train_oofs = []
-for file in tqdm(os.listdir('models')):
+for file in tqdm(os.listdir('result')):
     if 'train' in file:
+        print(file)
         num_classes_c = file.split('_')[1]
         if '11' in num_classes_c:
             num_classes = 11
         else:
             num_classes = int(num_classes_c[-1])
-        oof = pd.read_csv('models/' + file, header=None)
+        oof = pd.read_csv('result/' + file, header=None)
         oof['pred'] = np.argmax(oof.values, axis=1)
         oof['pred'] = oof['pred'].apply(lambda x: label_inverse(x, num_classes))
         train_oofs.append(oof['pred'].values.tolist())
