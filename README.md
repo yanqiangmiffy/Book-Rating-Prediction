@@ -77,3 +77,5 @@
 # 加入 效果差
 # data['Publisher_count'] = data.groupby('Publisher')['ISBN'].transform('count')
 ```
+
+- 所有特征 线上76.3504 线下lgb_numclasses3_0.7195052410657701.csv

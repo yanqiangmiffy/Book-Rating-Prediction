@@ -44,10 +44,10 @@ def load_data(num_classes):
     book['Year-Of-Publication'] = book['Year-Of-Publication'].astype(int)
     book.loc[book['Year-Of-Publication'] > 2020, 'Year-Of-Publication'] = \
         book['Year-Of-Publication'].value_counts().index[0]
-    #book.loc[book['Year-Of-Publication'] == 0, 'Year-Of-Publication'] = \
-    #    book['Year-Of-Publication'].value_counts().index[0]
-    #book['year_lag'] = 2020 - book['Year-Of-Publication']  # 数据集发表年份距今日期
-
+    book.loc[book['Year-Of-Publication'] == 0, 'Year-Of-Publication'] = \
+       book['Year-Of-Publication'].value_counts().index[0]
+    book['year_lag'] = 2020 - book['Year-Of-Publication']  # 数据集发表年份距今日期
+    book['year_lag_max']=max(book['Year-Of-Publication'])- book['Year-Of-Publication']
     # 作者处理
     book.loc[book['ISBN'] == '0330482750', 'Book-Author'] = 'Amit Chaudhuri'
     book.loc[book['ISBN'] == '0330482750', 'Publisher'] = 'Vintage Books USA'
@@ -161,8 +161,8 @@ def load_data(num_classes):
 
     data['Location'] = lb.fit_transform(data['Location'])
     data['Location_count'] = data.groupby('Location')['ISBN'].transform('count')
-    # data['country_count'] = data.groupby('country')['ISBN'].transform('count')
-    # data['state_count'] = data.groupby('state')['ISBN'].transform('count')
+    data['country_count'] = data.groupby('country')['ISBN'].transform('count')
+    data['state_count'] = data.groupby('state')['ISBN'].transform('count')
     # data['city_count'] = data.groupby('city')['ISBN'].transform('count')
 
     # ===================== 出版商 Publisher特征 ===================
@@ -243,92 +243,92 @@ def load_data(num_classes):
     data['Book-Title'] = data['Book-Title'].apply(lambda x: " ".join([w for w in x.split() if w not in stop_words]))
    
 
-    # # ==============聚类特征==================
-    # # 基于tfidf的文本聚类
-    # print('文本聚类')
-    # modelname = 'data/tfidf.pkl'
-    # if not os.path.exists(modelname):
-    #     v = TfidfVectorizer(ngram_range=(1, 2))
-    #     v.fit(data['Book-Title'])
-    #     print(len(v.get_feature_names()))
-    #     with open('data/tfidf.pkl', 'wb') as f:
-    #         pickle.dump(v, f)
-    # else:
-    #     with open('data/tfidf.pkl', 'rb') as f:
-    #         v = pickle.load(f)
-    # df_tfidf = v.transform(data['Book-Title'])
-    # kmname = 'data/km1.pkl'
-    # if not os.path.exists(kmname):
-    #     kmeans = KMeans(init='k-means++', n_clusters=6, n_init=6, n_jobs=-1)
-    #     pred_classes = kmeans.fit_predict(df_tfidf)
-    #     data['title_label'] = pred_classes
-    #     print(data['title_label'].value_counts())
-    #     with open(kmname, 'wb') as f:
-    #         pickle.dump(kmeans, f)
-    # else:
-    #     with open(kmname, 'rb') as f:
-    #         kmeans = pickle.load(f)
-    #         pred_classes = kmeans.predict(df_tfidf)
-    #         data['title_label'] = pred_classes
+    # ==============聚类特征==================
+    # 基于tfidf的文本聚类
+    print('文本聚类')
+    modelname = 'data/tfidf.pkl'
+    if not os.path.exists(modelname):
+        v = TfidfVectorizer(ngram_range=(1, 2))
+        v.fit(data['Book-Title'])
+        print(len(v.get_feature_names()))
+        with open('data/tfidf.pkl', 'wb') as f:
+            pickle.dump(v, f)
+    else:
+        with open('data/tfidf.pkl', 'rb') as f:
+            v = pickle.load(f)
+    df_tfidf = v.transform(data['Book-Title'])
+    kmname = 'data/km1.pkl'
+    if not os.path.exists(kmname):
+        kmeans = KMeans(init='k-means++', n_clusters=6, n_init=6, n_jobs=-1)
+        pred_classes = kmeans.fit_predict(df_tfidf)
+        data['title_label'] = pred_classes
+        print(data['title_label'].value_counts())
+        with open(kmname, 'wb') as f:
+            pickle.dump(kmeans, f)
+    else:
+        with open(kmname, 'rb') as f:
+            kmeans = pickle.load(f)
+            pred_classes = kmeans.predict(df_tfidf)
+            data['title_label'] = pred_classes
 
-    # kmname = 'data/km2.pkl'
-    # user_features = ['ISBN', 'Age', 'Year-Of-Publication', 'Year-Of-Publication_count',
-    #                  'ISBN1', 'ISBN2', 'ISBN3', 'ISBN4'
-    #                  ]
-    # if not os.path.exists(kmname):
-    #     print("用户聚类")
-    #     kmeans = KMeans(init='k-means++', n_clusters=6, n_init=6, n_jobs=-1)
-    #     pred_classes = kmeans.fit_predict(data[user_features])
-    #     data['user_label'] = pred_classes
-    #     print(data['user_label'].value_counts())
-    #     with open(kmname, 'wb') as f:
-    #         pickle.dump(kmeans, f)
-    # else:
-    #     with open(kmname, 'rb') as f:
-    #         kmeans = pickle.load(f)
-    #         pred_classes = kmeans.predict(data[user_features])
-    #         data['user_label'] = pred_classes
+    kmname = 'data/km2.pkl'
+    user_features = ['ISBN', 'Age', 'Year-Of-Publication', 'Year-Of-Publication_count',
+                     'ISBN1', 'ISBN2', 'ISBN3', 'ISBN4'
+                     ]
+    if not os.path.exists(kmname):
+        print("用户聚类")
+        kmeans = KMeans(init='k-means++', n_clusters=6, n_init=6, n_jobs=-1)
+        pred_classes = kmeans.fit_predict(data[user_features])
+        data['user_label'] = pred_classes
+        print(data['user_label'].value_counts())
+        with open(kmname, 'wb') as f:
+            pickle.dump(kmeans, f)
+    else:
+        with open(kmname, 'rb') as f:
+            kmeans = pickle.load(f)
+            pred_classes = kmeans.predict(data[user_features])
+            data['user_label'] = pred_classes
 
-    # # 基于doc2vec的文本聚类
-    # if not os.path.exists('models/doc2vec.vec'):
-    #     texts = book['Book-Title'].values.tolist()
-    #     texts = [text.split() for text in texts]
-    #     print(texts[:2])
-    #     documents = [TaggedDocument(doc, [i]) for i, doc in tqdm(enumerate(texts))]
-    #     d2v_model = Doc2Vec(documents, vector_size=200, window=3, min_count=1, workers=10)
-    #     d2v_model.save("models/doc2vec.vec")
-    #     d2v_model = Doc2Vec.load("models/doc2vec.vec")  # you can continue training with the loaded model!
-    #     print(d2v_model.infer_vector(['Classical Mythology']))
-    # else:
-    #     d2v_model = Doc2Vec.load('models/doc2vec.vec')
-    # if not os.path.exists('data/doc2vec.pkl'):
-    #     print("正在加载文档向量")
-    #     texts = data['Book-Title'].values.tolist()
-    #     vecs = []
-    #     for text in tqdm(texts):
-    #         vec = d2v_model.infer_vector(text.split())
-    #         vecs.append(vec)
-    #     print(np.array(vecs).shape)
-    #     with open('data/doc2vec.pkl', 'wb') as f:
-    #         pickle.dump(vecs, f)
-    # else:
-    #     with open('data/doc2vec.pkl', 'rb') as f:
-    #         vecs = pickle.load(f)
+    # 基于doc2vec的文本聚类
+    if not os.path.exists('models/doc2vec.vec'):
+        texts = book['Book-Title'].values.tolist()
+        texts = [text.split() for text in texts]
+        print(texts[:2])
+        documents = [TaggedDocument(doc, [i]) for i, doc in tqdm(enumerate(texts))]
+        d2v_model = Doc2Vec(documents, vector_size=200, window=3, min_count=1, workers=10)
+        d2v_model.save("models/doc2vec.vec")
+        d2v_model = Doc2Vec.load("models/doc2vec.vec")  # you can continue training with the loaded model!
+        print(d2v_model.infer_vector(['Classical Mythology']))
+    else:
+        d2v_model = Doc2Vec.load('models/doc2vec.vec')
+    if not os.path.exists('data/doc2vec.pkl'):
+        print("正在加载文档向量")
+        texts = data['Book-Title'].values.tolist()
+        vecs = []
+        for text in tqdm(texts):
+            vec = d2v_model.infer_vector(text.split())
+            vecs.append(vec)
+        print(np.array(vecs).shape)
+        with open('data/doc2vec.pkl', 'wb') as f:
+            pickle.dump(vecs, f)
+    else:
+        with open('data/doc2vec.pkl', 'rb') as f:
+            vecs = pickle.load(f)
 
-    # kmname = 'data/km3.pkl'
-    # if not os.path.exists(kmname):
-    #     print("基于doc2vec的标题聚类")
-    #     kmeans = KMeans(init='k-means++', n_clusters=15, n_init=15, n_jobs=-1)
-    #     pred_classes = kmeans.fit_predict(np.array(vecs))
-    #     data['doc2vec_label'] = pred_classes
-    #     print(data['doc2vec_label'].value_counts())
-    #     with open(kmname, 'wb') as f:
-    #         pickle.dump(kmeans, f)
-    # else:
-    #     with open(kmname, 'rb') as f:
-    #         kmeans = pickle.load(f)
-    #         pred_classes = kmeans.predict(np.array(vecs))
-    #         data['doc2vec_label'] = pred_classes
+    kmname = 'data/km3.pkl'
+    if not os.path.exists(kmname):
+        print("基于doc2vec的标题聚类")
+        kmeans = KMeans(init='k-means++', n_clusters=15, n_init=15, n_jobs=-1)
+        pred_classes = kmeans.fit_predict(np.array(vecs))
+        data['doc2vec_label'] = pred_classes
+        print(data['doc2vec_label'].value_counts())
+        with open(kmname, 'wb') as f:
+            pickle.dump(kmeans, f)
+    else:
+        with open(kmname, 'rb') as f:
+            kmeans = pickle.load(f)
+            pred_classes = kmeans.predict(np.array(vecs))
+            data['doc2vec_label'] = pred_classes
 
     # 添加转化率特征
     cat_list = ['ISBN', 'User-ID', 'Book-Author', 'Publisher', 'Year-Of-Publication']

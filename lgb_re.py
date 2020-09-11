@@ -266,5 +266,8 @@ test['Book-Rating'] = pred
 score = np.mean(result_dict_lgb['scores'])
 test['id'] = test['id'].astype(int)
 test['Book-Rating'] = test['Book-Rating'].astype(int)
+test['Book-Rating'] = test['Book-Rating'].apply(lambda x:10 if x>10 else x)
+test['Book-Rating'] = test['Book-Rating'].apply(lambda x:0 if x<0 else x)
+test['Book-Rating'] = test['Book-Rating'].astype(int)
 test[['id', 'Book-Rating']].to_csv('result/lgb_{}.csv'.format(score), index=None, header=None)
 print(test['Book-Rating'].value_counts())
